@@ -94,6 +94,11 @@ const FilingHistorySchema = new mongoose.Schema(
       type: Boolean,
       default: false, // Admin can lock a record after verification
     },
+    verificationStatus: {
+      type: String,
+      enum: ["Pending", "Verified", "Rejected"],
+      default: "Pending",
+    },
   },
   { timestamps: true }
 );

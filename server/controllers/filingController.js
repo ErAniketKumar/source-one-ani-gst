@@ -143,10 +143,44 @@ const toggleLockFiling = async (req, res, next) => {
   }
 };
 
+// ── ADMIN: PATCH /api/admin/filing/:gstin/verify ──────────────────────────────
+const verifyFiling = async (req, res, next) => {
+  try {
+    const { status } = req.body; // "Verified" or "Rejected"
+    if (!["Verified", "Rejected"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status." });
+    }
+
+    const record = await FilingHistory.findOne({ gstin: req.params.gstin.toUpperCase() });
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Filing history not found." });
+    }
+
+    record.verificationStatus = status;
+    // Auto-lock if verified
+    if (status === "Verified") {
+      record.isLocked = true;
+    } else {
+      record.isLocked = false;
+    }
+    
+    await record.save();
+
+    res.json({
+      success: true,
+      message: `Filing ${status.toLowerCase()} successfully.`,
+      data: record,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   addFilingHistory,
   getFilingByGSTIN,
   getMyFilings,
   getAllFilings,
   toggleLockFiling,
+  verifyFiling,
 };
