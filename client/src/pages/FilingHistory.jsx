@@ -91,11 +91,18 @@ const FilingHistory = () => {
           fy.filings
             .filter((f) => !typeFilter || f.returnType === typeFilter)
             .filter((f) => !arnSearch || (f.arn || "").toLowerCase().includes(arnSearch.toLowerCase()))
-            .forEach((f) => result.push({ ...f, financialYear: fy.financialYear, gstin: record.gstin }));
+            .forEach((f) => result.push({ 
+              ...f, 
+              financialYear: fy.financialYear, 
+              gstin: record.gstin,
+              verificationStatus: record.verificationStatus 
+            }));
         });
     });
     return result.sort((a, b) => new Date(b.filingDate) - new Date(a.filingDate));
   }, [records, yearFilter, typeFilter, arnSearch]);
+
+  const recordStatus = records[0]?.verificationStatus || "Pending";
 
   const delayCount = allFilings.filter((f) => f.isDelay).length;
 
@@ -103,10 +110,19 @@ const FilingHistory = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <SectionTitle
-        title={gstin ? `Filing History — ${gstin}` : "All Filing History"}
-        subtitle="Track and filter all your GST return filings"
-      />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <SectionTitle
+          title={gstin ? `Filing History — ${gstin}` : "All Filing History"}
+          subtitle="Track and filter all your GST return filings"
+        />
+        {gstin && (
+          <Badge 
+            label={`Verification: ${recordStatus}`} 
+            variant={recordStatus === "Verified" ? "success" : recordStatus === "Rejected" ? "danger" : "warning"} 
+            className="md:mt-0"
+          />
+        )}
+      </div>
 
       {/* Compliance summary */}
       {delayCount > 0 && (

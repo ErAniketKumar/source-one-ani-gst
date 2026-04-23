@@ -1,7 +1,7 @@
 const express = require("express");
 const { getAllUsers, toggleBlockUser, getAuditLog } = require("../controllers/adminController");
 const { getAllProfiles, verifyGSTProfile } = require("../controllers/gstController");
-const { getAllFilings, toggleLockFiling } = require("../controllers/filingController");
+const { getAllFilings, toggleLockFiling, verifyFiling } = require("../controllers/filingController");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -19,6 +19,7 @@ router.patch("/gst/:gstin/verify", verifyGSTProfile);
 // Filing management
 router.get("/filings", getAllFilings);
 router.patch("/filings/:gstin/lock", toggleLockFiling);
+router.patch("/filings/:gstin/verify", verifyFiling);
 
 // Audit log
 router.get("/actions", getAuditLog);

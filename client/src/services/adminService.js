@@ -13,4 +13,7 @@ export const getAllFilings = (defaultersOnly = false) =>
 export const toggleLockFiling = (gstin) =>
   api.patch(`/admin/filings/${gstin}/lock`);
 
+export const verifyFilingHistory = (gstin, status) =>
+  api.patch(`/admin/filings/${gstin}/verify`, { status });
+
 export const getAuditLog = () => api.get("/admin/actions");

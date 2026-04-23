@@ -47,6 +47,7 @@ const addFilingHistory = async (req, res, next) => {
         complianceStatus: complianceStatus || {},
         financialYears: processedYears,
         isLocked: isLocked || false,
+        verificationStatus: "Pending", // Reset to pending on every update
       },
       { upsert: true, new: true, runValidators: true }
     );

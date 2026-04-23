@@ -3,6 +3,7 @@ import {
   getAllUsers, toggleBlockUser,
   getAllGSTProfiles, verifyGSTProfile,
   getAllFilings, getAuditLog,
+  verifyFilingHistory
 } from "../services/adminService";
 import { Card, Badge, Button, PageLoader, EmptyState, SectionTitle } from "../components/UI";
 
@@ -56,6 +57,25 @@ const AdminPanel = () => {
       );
     } catch (err) { console.error(err); }
     finally { setActionLoading((p) => ({ ...p, [gstin]: false })); }
+  };
+
+  const handleVerifyFiling = async (gstin, status) => {
+    setActionLoading((p) => ({ ...p, [`${gstin}-${status}`]: true }));
+    try {
+      await verifyFilingHistory(gstin, status);
+      setFilings((prev) =>
+        prev.map((f) => 
+          f.gstin === gstin 
+            ? { 
+                ...f, 
+                verificationStatus: status, 
+                isLocked: status === "Verified" 
+              } 
+            : f
+        )
+      );
+    } catch (err) { console.error(err); }
+    finally { setActionLoading((p) => ({ ...p, [`${gstin}-${status}`]: false })); }
   };
 
   if (loading) return <PageLoader />;
@@ -184,6 +204,37 @@ const AdminPanel = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     {f.complianceStatus.isDefaulter && <Badge label="Defaulter" variant="danger" />}
                     {f.complianceStatus.isAnyDelay && <Badge label="Delays Found" variant="warning" />}
+                    
+                    {/* Verification Status */}
+                    <Badge 
+                      label={f.verificationStatus || "Pending"} 
+                      variant={
+                        f.verificationStatus === "Verified" ? "success" : 
+                        f.verificationStatus === "Rejected" ? "danger" : "warning"
+                      } 
+                    />
+
+                    {(!f.verificationStatus || f.verificationStatus === "Pending") && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="success"
+                          loading={actionLoading[`${f.gstin}-Verified`]}
+                          onClick={() => handleVerifyFiling(f.gstin, "Verified")}
+                          className="text-[10px] py-1 px-2"
+                        >
+                          Verify
+                        </Button>
+                        <Button
+                          variant="danger"
+                          loading={actionLoading[`${f.gstin}-Rejected`]}
+                          onClick={() => handleVerifyFiling(f.gstin, "Rejected")}
+                          className="text-[10px] py-1 px-2"
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+
                     {f.isLocked && <Badge label="🔒 Locked" variant="info" />}
                   </div>
                 </div>
