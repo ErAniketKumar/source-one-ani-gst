@@ -7,7 +7,49 @@ import {
 } from "../services/adminService";
 import { Card, Badge, Button, PageLoader, EmptyState, SectionTitle } from "../components/UI";
 
-const TABS = ["Users", "GST Profiles", "Filings", "Audit Log"];
+const TABS = ["Users", "GST Profiles", "Filings", "Pending Reviews", "Audit Log"];
+
+const FilingDetails = ({ filing }) => (
+  <div className="mt-4 border-t border-slate-700/50 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+    {filing.financialYears.map((fy) => (
+      <div key={fy.financialYear} className="mb-4 last:mb-0">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-indigo-400 font-bold text-xs uppercase tracking-wider">{fy.financialYear}</span>
+          <span className="text-slate-500 text-[10px]">({fy.filingFrequency})</span>
+        </div>
+        <div className="overflow-x-auto rounded-lg border border-slate-700/30">
+          <table className="w-full text-[11px] text-left">
+            <thead className="bg-slate-900/40 text-slate-400">
+              <tr>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Period</th>
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">ARN</th>
+                <th className="px-3 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              {fy.filings.map((entry, idx) => (
+                <tr key={idx} className="border-t border-slate-700/30 hover:bg-slate-700/20">
+                  <td className="px-3 py-2 font-mono text-indigo-300">{entry.returnType}</td>
+                  <td className="px-3 py-2">{entry.returnPeriod}</td>
+                  <td className="px-3 py-2">{new Date(entry.filingDate).toLocaleDateString()}</td>
+                  <td className="px-3 py-2 font-mono text-slate-400">{entry.arn || "—"}</td>
+                  <td className="px-3 py-2">
+                    <Badge 
+                      label={entry.status} 
+                      variant={entry.status === "Filed" ? "success" : entry.status === "Late Filed" ? "warning" : "danger"}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const AdminPanel = () => {
   const [tab, setTab] = useState("Users");
@@ -90,8 +132,8 @@ const AdminPanel = () => {
         {[
           { label: "Total Users", val: users.length, icon: "👥", c: "bg-indigo-500/20" },
           { label: "GST Profiles", val: profiles.length, icon: "🏢", c: "bg-blue-500/20" },
-          { label: "Blocked Users", val: users.filter(u => u.isBlocked).length, icon: "🚫", c: "bg-red-500/20" },
-          { label: "Unverified GSTs", val: profiles.filter(p => !p.isVerified).length, icon: "⏳", c: "bg-yellow-500/20" },
+          { label: "Pending Filings", val: filings.filter(f => f.verificationStatus === "Pending" || !f.verificationStatus).length, icon: "⏳", c: "bg-yellow-500/20" },
+          { label: "Defaulters", val: filings.filter(f => f.complianceStatus.isDefaulter).length, icon: "🚨", c: "bg-red-500/20" },
         ].map((s) => (
           <Card key={s.label} className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${s.c}`}>{s.icon}</div>
@@ -105,19 +147,27 @@ const AdminPanel = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-800/60 border border-slate-700/50 p-1 rounded-xl mb-6 overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 min-w-max text-sm font-medium px-4 py-2 rounded-lg transition-all ${
-              tab === t
-                ? "bg-indigo-600 text-white shadow"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const pendingCount = filings.filter(f => f.verificationStatus === "Pending" || !f.verificationStatus).length;
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`relative flex-1 min-w-max text-sm font-medium px-4 py-2 rounded-lg transition-all ${
+                tab === t
+                  ? "bg-indigo-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {t}
+              {t === "Pending Reviews" && pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── USERS TAB ─────────────────────────────────────────────────────────── */}
@@ -186,7 +236,7 @@ const AdminPanel = () => {
         )
       )}
 
-      {/* ── FILINGS TAB ───────────────────────────────────────────────────────── */}
+      {/* ── FILINGS TAB (ALL) ─────────────────────────────────────────────────── */}
       {tab === "Filings" && (
         filings.length === 0 ? <EmptyState icon="📄" title="No filing records found" /> : (
           <div className="grid gap-3">
@@ -254,44 +304,67 @@ const AdminPanel = () => {
 
                 {/* Expanded Details */}
                 {expandedFiling === f.gstin && (
-                  <div className="mt-4 border-t border-slate-700/50 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    {f.financialYears.map((fy) => (
-                      <div key={fy.financialYear} className="mb-4 last:mb-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-indigo-400 font-bold text-xs uppercase tracking-wider">{fy.financialYear}</span>
-                          <span className="text-slate-500 text-[10px]">({fy.filingFrequency})</span>
-                        </div>
-                        <div className="overflow-x-auto rounded-lg border border-slate-700/30">
-                          <table className="w-full text-[11px] text-left">
-                            <thead className="bg-slate-900/40 text-slate-400">
-                              <tr>
-                                <th className="px-3 py-2">Type</th>
-                                <th className="px-3 py-2">Period</th>
-                                <th className="px-3 py-2">Date</th>
-                                <th className="px-3 py-2">ARN</th>
-                                <th className="px-3 py-2">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="text-slate-300">
-                              {fy.filings.map((entry, idx) => (
-                                <tr key={idx} className="border-t border-slate-700/30 hover:bg-slate-700/20">
-                                  <td className="px-3 py-2 font-mono text-indigo-300">{entry.returnType}</td>
-                                  <td className="px-3 py-2">{entry.returnPeriod}</td>
-                                  <td className="px-3 py-2">{new Date(entry.filingDate).toLocaleDateString()}</td>
-                                  <td className="px-3 py-2 font-mono text-slate-400">{entry.arn || "—"}</td>
-                                  <td className="px-3 py-2">
-                                    <Badge 
-                                      label={entry.status} 
-                                      variant={entry.status === "Filed" ? "success" : entry.status === "Late Filed" ? "warning" : "danger"}
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ))}
+                  <FilingDetails filing={f} />
+                )}
+              </Card>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* ── PENDING REVIEWS TAB ───────────────────────────────────────────────── */}
+      {tab === "Pending Reviews" && (
+        filings.filter(f => f.verificationStatus === "Pending" || !f.verificationStatus).length === 0 
+        ? <EmptyState icon="✅" title="All caught up!" message="No filings pending for verification." /> : (
+          <div className="grid gap-3">
+            {filings.filter(f => f.verificationStatus === "Pending" || !f.verificationStatus).map((f) => (
+              <Card key={f._id} className="border-yellow-500/30 bg-yellow-500/5">
+                <div className="flex items-start justify-between flex-wrap gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-white font-mono text-sm font-semibold">{f.gstin}</p>
+                      <Badge label="Pending Review" variant="warning" />
+                    </div>
+                    <p className="text-slate-400 text-xs">
+                      Owner: {f.user?.name} ({f.user?.email})
+                    </p>
+                    <p className="text-slate-400 text-xs">
+                      Financial Years: {f.financialYears.length > 0 ? f.financialYears.map((fy) => fy.financialYear).join(", ") : "None"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setExpandedFiling(expandedFiling === f.gstin ? null : f.gstin)}
+                      className="text-xs py-1.5 px-3 border border-slate-700"
+                    >
+                      {expandedFiling === f.gstin ? "Hide History" : "Review History"}
+                    </Button>
+                    <Button
+                      variant="success"
+                      loading={actionLoading[`${f.gstin}-Verified`]}
+                      onClick={() => handleVerifyFiling(f.gstin, "Verified")}
+                      className="text-xs py-1.5 px-4"
+                    >
+                      Approve Filing
+                    </Button>
+                    <Button
+                      variant="danger"
+                      loading={actionLoading[`${f.gstin}-Rejected`]}
+                      onClick={() => handleVerifyFiling(f.gstin, "Rejected")}
+                      className="text-xs py-1.5 px-4"
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+                {expandedFiling === f.gstin && (
+                  <div className="mt-4 border-t border-slate-700/50 pt-4">
+                    {f.financialYears.length === 0 ? (
+                      <p className="text-slate-500 text-xs italic">No filing history provided yet.</p>
+                    ) : (
+                      <FilingDetails filing={f} />
+                    )}
                   </div>
                 )}
               </Card>
