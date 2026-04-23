@@ -17,6 +17,7 @@ const AdminPanel = () => {
   const [audit, setAudit] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
+  const [expandedFiling, setExpandedFiling] = useState(null); // Track expanded filing GSTIN
 
   const fetchAll = async () => {
     setLoading(true);
@@ -213,31 +214,86 @@ const AdminPanel = () => {
                         f.verificationStatus === "Rejected" ? "danger" : "warning"
                       } 
                     />
+                    {f.isLocked && <Badge label="🔒 Locked" variant="info" />}
 
-                    {(!f.verificationStatus || f.verificationStatus === "Pending") && (
-                      <div className="flex gap-2">
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setExpandedFiling(expandedFiling === f.gstin ? null : f.gstin)}
+                        className="text-[10px] py-1 px-3 border border-slate-700 hover:bg-slate-700/50"
+                      >
+                        {expandedFiling === f.gstin ? "Hide Details" : "View Details"}
+                      </Button>
+
+                      <div className="h-6 w-px bg-slate-700 mx-1" />
+
+                      {f.verificationStatus !== "Verified" && (
                         <Button
                           variant="success"
                           loading={actionLoading[`${f.gstin}-Verified`]}
                           onClick={() => handleVerifyFiling(f.gstin, "Verified")}
-                          className="text-[10px] py-1 px-2"
+                          className="text-[10px] py-1 px-3"
                         >
                           Verify
                         </Button>
+                      )}
+                      {f.verificationStatus !== "Rejected" && (
                         <Button
                           variant="danger"
                           loading={actionLoading[`${f.gstin}-Rejected`]}
                           onClick={() => handleVerifyFiling(f.gstin, "Rejected")}
-                          className="text-[10px] py-1 px-2"
+                          className="text-[10px] py-1 px-3"
                         >
                           Reject
                         </Button>
-                      </div>
-                    )}
-
-                    {f.isLocked && <Badge label="🔒 Locked" variant="info" />}
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Expanded Details */}
+                {expandedFiling === f.gstin && (
+                  <div className="mt-4 border-t border-slate-700/50 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {f.financialYears.map((fy) => (
+                      <div key={fy.financialYear} className="mb-4 last:mb-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-indigo-400 font-bold text-xs uppercase tracking-wider">{fy.financialYear}</span>
+                          <span className="text-slate-500 text-[10px]">({fy.filingFrequency})</span>
+                        </div>
+                        <div className="overflow-x-auto rounded-lg border border-slate-700/30">
+                          <table className="w-full text-[11px] text-left">
+                            <thead className="bg-slate-900/40 text-slate-400">
+                              <tr>
+                                <th className="px-3 py-2">Type</th>
+                                <th className="px-3 py-2">Period</th>
+                                <th className="px-3 py-2">Date</th>
+                                <th className="px-3 py-2">ARN</th>
+                                <th className="px-3 py-2">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="text-slate-300">
+                              {fy.filings.map((entry, idx) => (
+                                <tr key={idx} className="border-t border-slate-700/30 hover:bg-slate-700/20">
+                                  <td className="px-3 py-2 font-mono text-indigo-300">{entry.returnType}</td>
+                                  <td className="px-3 py-2">{entry.returnPeriod}</td>
+                                  <td className="px-3 py-2">{new Date(entry.filingDate).toLocaleDateString()}</td>
+                                  <td className="px-3 py-2 font-mono text-slate-400">{entry.arn || "—"}</td>
+                                  <td className="px-3 py-2">
+                                    <Badge 
+                                      label={entry.status} 
+                                      variant={entry.status === "Filed" ? "success" : entry.status === "Late Filed" ? "warning" : "danger"}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             ))}
           </div>
