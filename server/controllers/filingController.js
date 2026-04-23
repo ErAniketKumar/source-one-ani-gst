@@ -92,8 +92,11 @@ const getFilingByGSTIN = async (req, res, next) => {
 const getMyFilings = async (req, res, next) => {
   try {
     // Admin sees all filings, Users see only their own
+    console.log(`[DEBUG] getMyFilings: User role is ${req.user.role}`);
     const filter = req.user.role === "ADMIN" ? {} : { user: req.user._id };
+    console.log(`[DEBUG] getMyFilings: Using filter ${JSON.stringify(filter)}`);
     const records = await FilingHistory.find(filter).sort({ createdAt: -1 });
+    console.log(`[DEBUG] getMyFilings: Found ${records.length} records`);
     res.json({ success: true, count: records.length, data: records });
   } catch (err) {
     next(err);

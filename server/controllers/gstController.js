@@ -38,7 +38,9 @@ const addGSTProfile = async (req, res, next) => {
 const getMyProfiles = async (req, res, next) => {
   try {
     // Admin sees all profiles, Users see only their own
+    console.log(`[DEBUG] getMyProfiles: User role is ${req.user.role}`);
     const filter = req.user.role === "ADMIN" ? {} : { user: req.user._id };
+    console.log(`[DEBUG] getMyProfiles: Using filter ${JSON.stringify(filter)}`);
     const profiles = await GSTProfile.find(filter).sort({ createdAt: -1 });
     res.json({ success: true, count: profiles.length, data: profiles });
   } catch (err) {
