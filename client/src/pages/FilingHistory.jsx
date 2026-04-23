@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { getMyFilings, getFilingByGSTIN } from "../services/filingService";
-import { Badge, Card, PageLoader, EmptyState, InputField, SelectField, SectionTitle } from "../components/UI";
+import { getMyFilings, getFilingByGSTIN, initializeFilings } from "../services/filingService";
+import { Badge, Card, PageLoader, EmptyState, InputField, SelectField, SectionTitle, Button } from "../components/UI";
 
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -60,19 +60,38 @@ const FilingHistory = () => {
   const { gstin } = useParams(); // optional — if viewing by gstin
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initLoading, setInitLoading] = useState(false);
 
   // Filters
   const [yearFilter, setYearFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [arnSearch, setArnSearch] = useState("");
 
-  useEffect(() => {
+  const fetchData = () => {
+    setLoading(true);
     const fetch = gstin
       ? getFilingByGSTIN(gstin).then((r) => setRecords([r.data.data]))
       : getMyFilings().then((r) => setRecords(r.data.data));
 
     fetch.catch(console.error).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [gstin]);
+
+  const handleInitialize = async () => {
+    if (!gstin) return;
+    setInitLoading(true);
+    try {
+      await initializeFilings(gstin);
+      fetchData(); // Refresh data
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setInitLoading(false);
+    }
+  };
 
   // Collect all unique financial years across records
   const allYears = useMemo(() => {
@@ -183,7 +202,18 @@ const FilingHistory = () => {
       </div>
 
       {allFilings.length === 0 ? (
-        <EmptyState icon="📄" title="No filings found" message="Try adjusting your filters." />
+        <div className="flex flex-col items-center">
+          <EmptyState icon="📄" title="No filings found" message="Try adjusting your filters or initialize your filing history." />
+          {gstin && (
+            <Button 
+              onClick={handleInitialize} 
+              loading={initLoading}
+              className="mt-4"
+            >
+              Fetch & Initialize Filing History
+            </Button>
+          )}
+        </div>
       ) : (
         <>
           {/* Desktop Table */}
